@@ -1,11 +1,14 @@
-<p align="center">
-  <iframe width="100%" height="400" 
-          src="https://www.youtube.com/watch?v=Iva4lAFo_9Q" 
-          frameborder="0" 
-          allow="autoplay; encrypted-media" 
-          allowfullscreen>
-  </iframe>
-</p>
+<div align="center">
+  <video src="https://github.com/user-attachments/assets/8391d3e3-3983-4140-b928-f38c848d5751 " 
+         autoplay 
+         loop 
+         muted 
+         playsinline 
+         width="100%" 
+         style="display: block; border-radius: 6px;">
+  </video>
+</div>
+
 
 # CLiCScrape (browser extension)
 
