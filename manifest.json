@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "CLiC Timetable Planner",
+  "name": "CLiCScrape",
   "version": "0.1.0",
   "description": "Retrieve class options from MMU CLiC pages you open yourself, then build clash-free timetables. Everything stays in your browser.",
   "permissions": ["storage"],
