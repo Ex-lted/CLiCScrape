@@ -1,4 +1,4 @@
-[![CLiCScrape demo video](https://img.youtube.com/vi/Iva4lAFo_9Q/maxresdefault.jpg)](https://www.youtube.com/watch?v=Iva4lAFo_9Q)
+<video src="https://github.com/user-attachments/assets/3505f16f-ad2c-43df-81a9-5d8e1e185557" controls width="100%"></video>
 
 # CLiCScrape (browser extension)
 
