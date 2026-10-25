@@ -1,4 +1,6 @@
-<img width="800" height="450" alt="ezgif-62f17fb57692b2b7" src="https://github.com/user-attachments/assets/1f4854e4-0c49-4ba5-9602-d14dd17a4798" />
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/1f4854e4-0c49-4ba5-9602-d14dd17a4798" style="width: 100%; max-width: 100%; height: auto; display: block;">
+</p>
 
 # CLiCScrape (browser extension)
 
