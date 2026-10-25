@@ -1,4 +1,4 @@
-<iframe width="560" height="315" src="https://www.youtube.com/embed/Iva4lAFo_9Q" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+[![CLiCScrape demo video](https://img.youtube.com/vi/Iva4lAFo_9Q/maxresdefault.jpg)](https://www.youtube.com/watch?v=Iva4lAFo_9Q)
 
 # CLiCScrape (browser extension)
 
