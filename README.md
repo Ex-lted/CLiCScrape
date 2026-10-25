@@ -1,4 +1,7 @@
-# https://github.com/user-attachments/assets/e27f6b24-c53c-4d95-a6ca-38d03a857f10
+
+<p align="center">
+  <video src=https://github.com/user-attachments/assets/e27f6b24-c53c-4d95-a6ca-38d03a857f10 controls loop width="100%"></video>
+</p>
 
 # CLiCScrape (browser extension)
 
