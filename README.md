@@ -1,4 +1,4 @@
-https://github.com/user-attachments/assets/8391d3e3-3983-4140-b928-f38c848d5751
+<img width="800" height="450" alt="ezgif-62f17fb57692b2b7" src="https://github.com/user-attachments/assets/1f4854e4-0c49-4ba5-9602-d14dd17a4798" />
 
 # CLiCScrape (browser extension)
 
