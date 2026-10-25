@@ -109,29 +109,51 @@ header .sp{flex:1}
 .x:hover{color:var(--err)}
 .add{display:flex;gap:8px;margin:12px 0 8px}
 .units{margin-top:6px;color:var(--mut)}
-.units.over{color:var(--err);font-weight:650}
 
 /* Checkbox + switch */
-input[type=checkbox]{accent-color:var(--acc);width:16px;height:16px;margin:0}
-input[type=checkbox].sw{-webkit-appearance:none;appearance:none;width:40px;height:24px;border-radius:999px;position:relative;
+input[type=checkbox]{-webkit-appearance:none;appearance:none;width:17px;height:17px;margin:0;flex:none;position:relative;cursor:pointer;
+ border:1.5px solid var(--mut);border-radius:5px;background:transparent;transition:background .15s,border-color .15s}
+input[type=checkbox]:hover{border-color:var(--fg)}
+input[type=checkbox]:checked{background:var(--acc);border-color:var(--acc)}
+input[type=checkbox]:checked::after{content:"";position:absolute;left:4.5px;top:1px;width:5px;height:9px;
+ border:solid var(--accfg);border-width:0 2px 2px 0;transform:rotate(45deg)}
+input[type=checkbox].sw{width:40px;height:24px;border:0;border-radius:999px;position:relative;
  background:var(--hover);flex:none;cursor:pointer;transition:background .2s}
-input[type=checkbox].sw::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:var(--knob);
+input[type=checkbox].sw::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border:0;border-radius:50%;background:var(--knob);
  box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .2s cubic-bezier(.3,.7,.3,1)}
-input[type=checkbox].sw:checked{background:var(--acc)}
-input[type=checkbox].sw:checked::after{transform:translateX(16px)}
+input[type=checkbox].sw:checked{background:var(--acc);border:0}
+input[type=checkbox].sw:checked::after{transform:translateX(16px) rotate(0)}
 @media (prefers-reduced-motion:reduce){
  input[type=checkbox].sw,input[type=checkbox].sw::after,.tabs button,.iconbtn,.primary,.ghost{transition:none}}
 
+/* Segmented control (Appearance) */
+.seg{display:flex;gap:2px;padding:3px;background:var(--well);border-radius:10px}
+.seg button{flex:1;border:0;background:transparent;color:var(--mut);padding:6px 8px;font-size:12.5px;font-weight:550;border-radius:7px;
+ transition:background .15s,color .15s}
+.seg button:hover{color:var(--fg)}
+.seg button.on{background:var(--bg);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.12),0 0 0 .5px var(--line)}
+
 /* Fields */
 .add input,.field select,.field input[type=number]{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:8px 11px;
- background:var(--well);color:var(--fg);font:inherit;transition:border-color .15s,background .15s}
-.add input:focus,.field select:focus,.field input[type=number]:focus{outline:none;border-color:var(--acc);background:var(--bg)}
+ background-color:var(--well);color:var(--fg);font:inherit;transition:border-color .15s,background-color .15s}
+.add input:focus,.field select:focus,.field input[type=number]:focus{outline:none;border-color:var(--acc);background-color:var(--bg)}
 .add input::placeholder{color:var(--mut)}
-.field select{flex:none;width:122px}
+.field select{flex:none;width:128px;-webkit-appearance:none;appearance:none;cursor:pointer;padding-right:32px;
+ background-image:linear-gradient(45deg,transparent 50%,var(--mut) 50%),linear-gradient(135deg,var(--mut) 50%,transparent 50%);
+ background-position:calc(100% - 17px) 50%,calc(100% - 12px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+.time{display:flex;align-items:center;gap:6px}
+.time .colon{color:var(--mut);font-weight:600}
+.time select{width:68px;padding-right:26px;text-align:left;background-position:calc(100% - 14px) 50%,calc(100% - 9px) 50%}
+.time select:disabled{opacity:.45;cursor:not-allowed}
+.field select option{background:var(--bg);color:var(--fg)}
+.field input[type=number]::-webkit-inner-spin-button{opacity:.4}
 .field input[type=number]{flex:none;width:80px;text-align:right}
 .lbl{font-weight:620;display:block;margin:2px 0 6px}
 .days{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
-.day{display:flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:999px;padding:4px 10px}
+.day{display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 9px;cursor:pointer;
+ transition:background .15s,border-color .15s}
+.day:hover{background:var(--well)}
+.day:has(input:checked){background:var(--well);border-color:var(--mut)}
 .field{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 0}
 .chk{display:flex;flex-direction:row-reverse;justify-content:flex-end;align-items:center;gap:10px;margin:12px 0}
 

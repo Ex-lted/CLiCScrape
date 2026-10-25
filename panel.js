@@ -291,16 +291,29 @@ export async function mountPanel({ doc = document, adapter }) {
       terms.length > 1 ? h('div', { class: 'msg err' }, `Mixed trimesters: ${terms.join(', ')}`) : null,
       codes.map((c) => courseRow(s, c)),
       h('div', { class: 'add' }, input, h('button', { class: 'ghost', onclick: add }, 'Add')),
-      h('div', { class: `units${units > s.filters.maxUnits ? ' over' : ''}` }, `Units (selected, retrieved): ${units} / ${s.filters.maxUnits}`));
+      h('div', { class: 'units' }, `Units (selected, retrieved): ${units}`));
   }
 
   function filtersTab(s) {
     const f = s.filters;
+    const theme = THEMES.includes(s.ui.theme) ? s.ui.theme : 'system';
     const set = (fn) => store.update((st) => fn(st.filters), { silent: true });
     const field = (label, el) => h('label', { class: 'field' }, h('span', {}, label), el);
-    const timeSelect = (name, value, onPick) => h('select', { 'data-f': name, onchange: (e) => onPick(fromHHMM(e.target.value)) },
-      h('option', { value: '', selected: value == null }, 'No limit'),
-      TIME_OPTIONS.map((t) => h('option', { value: t, selected: t === toHHMM(value) }, t)));
+    // Two dropdowns: HH : MM. Hour "--" means no limit (minutes are then disabled).
+    const pad = (n) => String(n).padStart(2, '0');
+    const HOURS = Array.from({ length: 24 }, (_, i) => pad(i));
+    const MINUTES = Array.from({ length: 12 }, (_, i) => pad(i * 5));
+    const timeSelect = (name, value, onPick) => {
+      const hh = value == null ? null : Math.floor(value / 60);
+      const mm = value == null ? 0 : value % 60;
+      const emit = () => onPick(hSel.value === '' ? null : Number(hSel.value) * 60 + Number(mSel.value));
+      const hSel = h('select', { 'data-f': `${name}-h`, 'aria-label': 'Hour', onchange: () => { mSel.disabled = hSel.value === ''; emit(); } },
+        h('option', { value: '', selected: hh == null }, '--'),
+        HOURS.map((t) => h('option', { value: String(Number(t)), selected: hh === Number(t) }, t)));
+      const mSel = h('select', { 'data-f': `${name}-m`, 'aria-label': 'Minute', disabled: hh == null, onchange: emit },
+        MINUTES.map((t) => h('option', { value: String(Number(t)), selected: mm === Number(t) }, t)));
+      return h('div', { class: 'time', 'data-f': name }, hSel, h('span', { class: 'colon' }, ':'), mSel);
+    };
     return h('div', {},
       h('span', { class: 'lbl' }, 'Free days (no classes at all)'),
       h('div', { class: 'days' }, DAYS.map((d) => h('label', { class: 'day' },
@@ -314,8 +327,11 @@ export async function mountPanel({ doc = document, adapter }) {
         h('input', { type: 'checkbox', class: 'sw', 'data-f': 'openOnly', checked: f.openOnly, onchange: (e) => set((ff) => { ff.openOnly = e.target.checked; }) }),
         'Only options with open seats'),
       field('Plans to show (1 to 10)', h('input', { type: 'number', min: 1, max: 10, 'data-f': 'count', value: String(f.count), onchange: (e) => set((ff) => { ff.count = Math.min(10, Math.max(1, Number(e.target.value) || 5)); }) })),
-      field('Max units per trimester', h('input', { type: 'number', min: 1, max: 40, 'data-f': 'maxUnits', value: String(f.maxUnits), onchange: (e) => set((ff) => { ff.maxUnits = Math.max(1, Number(e.target.value) || 20); }) })),
-      h('p', { class: 'muted' }, 'Earliest start and latest end apply to every class meeting. Leave a time empty for no limit.'));
+      h('p', { class: 'muted' }, 'Earliest start and latest end apply to every class meeting. Leave a time empty for no limit.'),
+      h('span', { class: 'lbl', style: { 'margin-top': '16px' } }, 'Appearance'),
+      h('div', { class: 'seg' }, THEMES.map((t) => h('button', {
+        class: theme === t ? 'on' : '', 'data-theme-opt': t, onclick: () => store.update((st) => { st.ui.theme = t; }),
+      }, THEME_LABEL[t]))));
   }
 
   function plansTab(s) {
