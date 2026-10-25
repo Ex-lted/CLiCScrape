@@ -1,4 +1,4 @@
-# CLiC Timetable Planner (browser extension)
+# CLiCScrape (browser extension)
 
 Reads the class options of courses you open yourself in MMU CLiC, then builds clash-free timetables from your filters.
 You log in and click through CLiC as usual. The extension never logs in, never clicks for you, and never enrols you.

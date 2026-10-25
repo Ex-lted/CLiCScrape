@@ -164,7 +164,7 @@ assert.match(q(p, '.units').textContent, /10 \/ 20/);
 ok('after remount: green outlines, units 10 / 20');
 
 // 5. generate with different filters; compare counts with brute force
-const setTime = (name, v) => { const el = q(p, `input[data-f="${name}"]`); el.value = v; fire(el, 'change'); };
+const setTime = (name, v) => { const el = q(p, `[data-f="${name}"]`); el.value = v; fire(el, 'change'); };
 const gen = () => { tab(p, 'plans'); fire(q(p, '.gen'), 'click'); return p.view.result; };
 const checkValid = (res, f) => {
   for (const picks of res.schedules) {
@@ -255,6 +255,42 @@ assert.match(q(p, '.msg.ok').textContent, /1 have no selection arrow/);
 tab(p, 'plans'); fire(q(p, '.gen'), 'click');
 assert.equal(p.view.result.total, 2);
 ok('no Room column + single component + "1 - N of N" label + locked row');
+
+// grid always reaches 8PM even when classes end at 4PM
+const lastLabel = [...qa(p, '.grid')[0].querySelectorAll('.tl')].at(-1).textContent;
+assert.equal(lastLabel, '19', 'last hour row is 19:00-20:00');
+ok('timetable grid runs until 8PM');
+
+// 10. filters use 24h dropdowns, not free typing
+tab(p, 'filters');
+const sel = q(p, 'select[data-f="earliest"]');
+assert.ok(sel, 'earliest is a <select>');
+assert.equal(sel.options.length, 49);
+assert.equal(sel.options[0].textContent, 'No limit');
+assert.equal(sel.options[1].value, '00:00');
+assert.equal(sel.options[48].value, '23:30');
+assert.equal(q(p, 'input[type=time]'), null);
+sel.value = '13:30'; fire(sel, 'change');
+assert.equal(disk.filters.earliest, 13 * 60 + 30);
+ok('24h dropdowns (00:00 to 23:30), value saved');
+
+// 11. drag + minimise
+const ev = (el, type, x, y) => el.dispatchEvent(new dom.window.MouseEvent(type, { bubbles: true, clientX: x, clientY: y, button: 0 }));
+let head = q(p, 'header');
+ev(head, 'pointerdown', 100, 100); ev(head, 'pointermove', 300, 250); ev(head, 'pointerup', 300, 250);
+assert.deepEqual(disk.ui.pos, { x: 200, y: 150 });
+assert.equal(p.host.style.getPropertyValue('left'), '200px');
+ev(q(p, '.iconbtn'), 'pointerdown', 5, 5); ev(q(p, '.iconbtn'), 'pointermove', 600, 600); ev(q(p, '.iconbtn'), 'pointerup', 600, 600);
+assert.deepEqual(disk.ui.pos, { x: 200, y: 150 }, 'minimise button does not start a drag');
+fire(q(p, '.iconbtn'), 'click');
+assert.equal(p.store.state.ui.collapsed, true);
+let pill = q(p, '.pill');
+ev(pill, 'pointerdown', 50, 50); ev(pill, 'pointerup', 50, 50); // tap
+assert.equal(p.store.state.ui.collapsed, false, 'tap on pill re-opens');
+head = q(p, 'header');
+ev(head, 'pointerdown', 10, 10); ev(head, 'pointermove', 5000, 5000); ev(head, 'pointerup', 5000, 5000);
+assert.ok(disk.ui.pos.x <= 1024 - 8 && disk.ui.pos.y <= 768 - 8, 'clamped to the viewport');
+ok('drag moves + persists, minimise still works, tap re-opens, clamped on screen');
 
 console.log(`\n${passed} checks passed`);
 process.exit(0);

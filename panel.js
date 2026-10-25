@@ -16,6 +16,7 @@ export const fromHHMM = (s) => {
   const m = /^(\d{2}):(\d{2})$/.exec(s || '');
   return m ? Number(m[1]) * 60 + Number(m[2]) : null;
 };
+const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => toHHMM(i * 30)); // 00:00 ... 23:30
 const isOpen = (o) => /^open$/i.test(o.status);
 const clashCount = (d) => d.options.filter((o) => o.enrolledConflict).length;
 const seatLabel = (st) => (st.status === 'open' ? `${st.open}/${st.total}` : st.status === 'closed' ? 'closed' : '?');
@@ -46,6 +47,48 @@ export async function mountPanel({ doc = document, adapter }) {
   const app = doc.createElement('div');
   root.append(app);
   doc.body.append(host);
+
+  // ---------- drag ----------
+  let pos = store.state.ui.pos ?? null; // {x,y} = left/top in px; null = default bottom-right corner
+  function setPos(x, y) {
+    const r = host.getBoundingClientRect();
+    pos = {
+      x: Math.round(Math.min(Math.max(8, x), Math.max(8, win.innerWidth - r.width - 8))),
+      y: Math.round(Math.min(Math.max(8, y), Math.max(8, win.innerHeight - r.height - 8))),
+    };
+    for (const [k, v] of [['left', `${pos.x}px`], ['top', `${pos.y}px`], ['right', 'auto'], ['bottom', 'auto']]) host.style.setProperty(k, v);
+  }
+  // Drag by `handle`. Children with [data-nodrag] keep their own click. A press that moves < 4px is a tap.
+  function makeDraggable(handle, onTap) {
+    handle.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0 || e.target.closest?.('[data-nodrag]')) return;
+      const r = host.getBoundingClientRect();
+      const ox = e.clientX - r.left;
+      const oy = e.clientY - r.top;
+      const sx = e.clientX;
+      const sy = e.clientY;
+      let moved = false;
+      handle.setPointerCapture?.(e.pointerId);
+      const move = (ev) => {
+        if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 4) return;
+        moved = true;
+        setPos(ev.clientX - ox, ev.clientY - oy);
+      };
+      const up = () => {
+        handle.removeEventListener('pointermove', move);
+        handle.removeEventListener('pointerup', up);
+        handle.removeEventListener('pointercancel', up);
+        if (moved) store.update((s) => { s.ui.pos = pos; }, { silent: true });
+        else if (onTap) onTap();
+      };
+      handle.addEventListener('pointermove', move);
+      handle.addEventListener('pointerup', up);
+      handle.addEventListener('pointercancel', up);
+      e.preventDefault();
+    });
+  }
+  const onResize = () => { if (pos) setPos(pos.x, pos.y); };
+  win.addEventListener('resize', onResize);
 
   // ---------- tiny DOM builder (text only; scraped text never goes through innerHTML) ----------
   const h = (tag, props, ...kids) => {
@@ -118,7 +161,7 @@ export async function mountPanel({ doc = document, adapter }) {
     const used = new Set(blocks.map((b) => b.day));
     const days = DAYS.filter((d, i) => i < 5 || used.has(d));
     const t0 = Math.floor(Math.min(...blocks.map((b) => b.start)) / 60) * 60;
-    const t1 = Math.ceil(Math.max(...blocks.map((b) => b.end)) / 60) * 60;
+    const t1 = Math.max(Math.ceil(Math.max(...blocks.map((b) => b.end)) / 60) * 60, 20 * 60); // always show until 8PM
     const height = ((t1 - t0) / 60) * PX_PER_HOUR;
     const hours = [];
     for (let t = t0; t < t1; t += 60) hours.push(t);
@@ -132,7 +175,7 @@ export async function mountPanel({ doc = document, adapter }) {
         hours.map((t) => h('i', { class: 'hl', style: { top: y(t) } })),
         blocks.filter((b) => b.day === d).map((b) => h('div', {
           class: 'blk', title: b.title,
-          style: { top: y(b.start), height: `${((b.end - b.start) / 60) * PX_PER_HOUR - 1}px`, background: b.color },
+          style: { top: y(b.start), height: `${((b.end - b.start) / 60) * PX_PER_HOUR - 1}px`, 'background-color': b.color },
         }, b.label)))));
   }
 
@@ -226,6 +269,9 @@ export async function mountPanel({ doc = document, adapter }) {
     const f = s.filters;
     const set = (fn) => store.update((st) => fn(st.filters), { silent: true });
     const field = (label, el) => h('label', { class: 'field' }, h('span', {}, label), el);
+    const timeSelect = (name, value, onPick) => h('select', { 'data-f': name, onchange: (e) => onPick(fromHHMM(e.target.value)) },
+      h('option', { value: '', selected: value == null }, 'No limit'),
+      TIME_OPTIONS.map((t) => h('option', { value: t, selected: t === toHHMM(value) }, t)));
     return h('div', {},
       h('span', { class: 'lbl' }, 'Free days (no classes at all)'),
       h('div', { class: 'days' }, DAYS.map((d) => h('label', { class: 'day' },
@@ -233,10 +279,10 @@ export async function mountPanel({ doc = document, adapter }) {
           type: 'checkbox', 'data-day': d, checked: f.freeDays.includes(d),
           onchange: (e) => set((ff) => { ff.freeDays = e.target.checked ? [...new Set([...ff.freeDays, d])] : ff.freeDays.filter((x) => x !== d); }),
         }), d))),
-      field('Earliest class start', h('input', { type: 'time', 'data-f': 'earliest', value: toHHMM(f.earliest), onchange: (e) => set((ff) => { ff.earliest = fromHHMM(e.target.value); }) })),
-      field('Latest class end', h('input', { type: 'time', 'data-f': 'latest', value: toHHMM(f.latest), onchange: (e) => set((ff) => { ff.latest = fromHHMM(e.target.value); }) })),
+      field('Earliest class start', timeSelect('earliest', f.earliest, (v) => set((ff) => { ff.earliest = v; }))),
+      field('Latest class end', timeSelect('latest', f.latest, (v) => set((ff) => { ff.latest = v; }))),
       h('label', { class: 'chk' },
-        h('input', { type: 'checkbox', 'data-f': 'openOnly', checked: f.openOnly, onchange: (e) => set((ff) => { ff.openOnly = e.target.checked; }) }),
+        h('input', { type: 'checkbox', class: 'sw', 'data-f': 'openOnly', checked: f.openOnly, onchange: (e) => set((ff) => { ff.openOnly = e.target.checked; }) }),
         'Only options with open seats'),
       field('Plans to show (1 to 10)', h('input', { type: 'number', min: 1, max: 10, 'data-f': 'count', value: String(f.count), onchange: (e) => set((ff) => { ff.count = Math.min(10, Math.max(1, Number(e.target.value) || 5)); }) })),
       field('Max units per trimester', h('input', { type: 'number', min: 1, max: 40, 'data-f': 'maxUnits', value: String(f.maxUnits), onchange: (e) => set((ff) => { ff.maxUnits = Math.max(1, Number(e.target.value) || 20); }) })),
@@ -265,10 +311,14 @@ export async function mountPanel({ doc = document, adapter }) {
   function panelView(s) {
     const cur = STEPS.find((x) => x.id === view.step);
     const body = { guide: guideTab, courses: coursesTab, filters: filtersTab, plans: plansTab }[s.ui.tab](s);
+    const head = h('header', { class: 'drag' },
+      h('div', {}, h('div', { class: 't' }, 'CLiC Planner'),
+        h('div', { class: 's' }, cur ? `Now: ${cur.title}` : 'Page not recognised')),
+      h('span', { class: 'sp' }),
+      h('button', { class: 'iconbtn', 'data-nodrag': true, title: 'Minimise', onclick: () => store.update((st) => { st.ui.collapsed = true; }) }, '–'));
+    makeDraggable(head);
     return h('div', { class: 'panel' },
-      h('header', {}, h('div', {}, h('div', { class: 't' }, 'CLiC Planner'),
-        h('div', { class: 's' }, cur ? `Now: ${cur.title}` : 'Page not recognised')), h('span', { class: 'sp' }),
-      h('button', { class: 'iconbtn', title: 'Minimise', onclick: () => store.update((st) => { st.ui.collapsed = true; }) }, '–')),
+      head,
       h('nav', { class: 'tabs' }, TABS.map(([id, label]) => h('button', {
         class: s.ui.tab === id ? 'on' : '', 'data-tab': id, onclick: () => store.update((st) => { st.ui.tab = id; }),
       }, label))),
@@ -277,13 +327,19 @@ export async function mountPanel({ doc = document, adapter }) {
 
   function pillView(s) {
     const done = s.selected.filter((c) => s.courses[c]).length;
-    return h('button', { class: 'pill', onclick: () => store.update((st) => { st.ui.collapsed = false; }) },
-      'CLiC Planner', h('b', {}, `${done}/${s.selected.length}`));
+    const open = () => store.update((st) => { st.ui.collapsed = false; });
+    const btn = h('button', {
+      class: 'pill drag', title: 'Click to open, drag to move',
+      onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } },
+    }, 'CLiC Planner', h('b', {}, `${done}/${s.selected.length}`));
+    makeDraggable(btn, open);
+    return btn;
   }
 
   function render() {
     const s = store.state;
     app.replaceChildren(s.ui.collapsed ? pillView(s) : panelView(s));
+    if (pos) setPos(pos.x, pos.y); // re-clamp: panel and pill differ in size
   }
 
   // ---------- page awareness ----------
@@ -342,6 +398,7 @@ export async function mountPanel({ doc = document, adapter }) {
     destroy() {
       mo.disconnect();
       win.clearTimeout(timer);
+      win.removeEventListener('resize', onResize);
       host.remove();
     },
   };
