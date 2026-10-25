@@ -1,3 +1,5 @@
+<iframe width="560" height="315" src="https://www.youtube.com/embed/Iva4lAFo_9Q" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
 # CLiCScrape (browser extension)
 
 Reads the class options of courses you open yourself in MMU CLiC, then builds clash-free timetables from your filters.
