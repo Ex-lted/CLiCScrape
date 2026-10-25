@@ -1,8 +1,4 @@
-
-
-https://github.com/user-attachments/assets/e27f6b24-c53c-4d95-a6ca-38d03a857f10
-
-<video src="CLiCScrape_explainer_draft.mp4" autoplay loop muted playsinline controls width="100%"></video>
+<video src=https://github.com/user-attachments/assets/e27f6b24-c53c-4d95-a6ca-38d03a857f10 autoplay loop muted playsinline controls width="100%"></video>
 
 # CLiCScrape (browser extension)
 
