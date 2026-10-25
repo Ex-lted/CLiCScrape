@@ -1,4 +1,4 @@
-<video src="CLiCScrape_explainer_draft.mp4" controls autoplay loop muted width="100%"></video>
+<video src="CLiCScrape_explainer_draft.mp4" autoplay loop muted playsinline controls width="100%"></video>
 
 # CLiCScrape (browser extension)
 
