@@ -9,6 +9,14 @@ const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const PALETTE = ['#4f46e5', '#0891b2', '#16a34a', '#d97706', '#db2777', '#7c3aed', '#0d9488', '#dc2626'];
 const PX_PER_HOUR = 36;
 const TABS = [['guide', 'Guide'], ['courses', 'Courses'], ['filters', 'Filters'], ['plans', 'Plans']];
+const THEMES = ['system', 'light', 'dark'];
+const THEME_LABEL = { system: 'Auto', light: 'Light', dark: 'Dark' };
+// Static icon shapes (24x24, stroked). Built with createElementNS, never innerHTML.
+const ICONS = {
+  light: [['circle', { cx: 12, cy: 12, r: 4 }], ['path', { d: 'M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4' }]],
+  dark: [['path', { d: 'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z' }]],
+  system: [['rect', { x: 3, y: 4, width: 18, height: 12, rx: 2 }], ['path', { d: 'M8 20h8M12 16v4' }]],
+};
 
 export const fmtTime = (m) => `${Math.floor(m / 60) % 12 || 12}:${String(m % 60).padStart(2, '0')}${m >= 720 ? 'PM' : 'AM'}`;
 export const toHHMM = (m) => (m == null ? '' : `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`);
@@ -107,6 +115,27 @@ export async function mountPanel({ doc = document, adapter }) {
     }
     return el;
   };
+
+  const icon = (name) => {
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = doc.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('aria-hidden', 'true');
+    for (const [tag, attrs] of ICONS[name]) {
+      const el = doc.createElementNS(NS, tag);
+      for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, String(v));
+      svg.append(el);
+    }
+    return svg;
+  };
+  const applyTheme = (t) => {
+    if (t === 'light' || t === 'dark') host.setAttribute('data-theme', t);
+    else host.removeAttribute('data-theme'); // follow the system
+  };
+  const cycleTheme = () => store.update((st) => {
+    const cur = THEMES.includes(st.ui.theme) ? st.ui.theme : 'system';
+    st.ui.theme = THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length];
+  });
 
   const setMsg = (kind, text, details = []) => {
     view.message = { kind, text, details };
@@ -310,11 +339,16 @@ export async function mountPanel({ doc = document, adapter }) {
 
   function panelView(s) {
     const cur = STEPS.find((x) => x.id === view.step);
+    const theme = THEMES.includes(s.ui.theme) ? s.ui.theme : 'system';
     const body = { guide: guideTab, courses: coursesTab, filters: filtersTab, plans: plansTab }[s.ui.tab](s);
     const head = h('header', { class: 'drag' },
       h('div', {}, h('div', { class: 't' }, 'CLiC Planner'),
         h('div', { class: 's' }, cur ? `Now: ${cur.title}` : 'Page not recognised')),
       h('span', { class: 'sp' }),
+      h('button', {
+        class: 'iconbtn theme', 'data-nodrag': true, 'aria-label': `Theme: ${THEME_LABEL[theme]}`,
+        title: `Theme: ${THEME_LABEL[theme]} (click to change)`, onclick: cycleTheme,
+      }, icon(theme)),
       h('button', { class: 'iconbtn', 'data-nodrag': true, title: 'Minimise', onclick: () => store.update((st) => { st.ui.collapsed = true; }) }, '–'));
     makeDraggable(head);
     return h('div', { class: 'panel' },
@@ -338,6 +372,7 @@ export async function mountPanel({ doc = document, adapter }) {
 
   function render() {
     const s = store.state;
+    applyTheme(s.ui.theme);
     app.replaceChildren(s.ui.collapsed ? pillView(s) : panelView(s));
     if (pos) setPos(pos.x, pos.y); // re-clamp: panel and pill differ in size
   }
