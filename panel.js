@@ -473,7 +473,7 @@ export async function mountPanel({ doc = document, adapter }) {
     const btn = h('button', {
       class: 'pill drag', title: 'Click to open, drag to move',
       onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } },
-    }, 'CLiC Planner', h('b', {}, `${done}/${s.selected.length}`));
+    }, 'CLiCScrape', h('b', {}, `${done}/${s.selected.length}`));
     makeDraggable(btn, open);
     return btn;
   }
