@@ -78,12 +78,13 @@ header .sp{flex:1}
 .ghost.danger:not(:disabled):hover{filter:brightness(.96)}
 .ghost.danger.confirm{background:#cf4034;color:#fff}
 .ghost.danger.confirm:hover{background:#b8372c;filter:none}
-.bulk{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.bulk{display:flex;align-items:center;flex-wrap:nowrap;gap:6px;margin-bottom:6px}
+.bulk .ghost{white-space:nowrap;flex:none}
 .bulk .sp{flex:1}
 
 /* Collapsed pill */
-.pill{display:flex;align-items:center;gap:10px;border:0;border-radius:999px;padding:9px 10px 9px 16px;font-weight:600;
- background:var(--fg);color:var(--bg);box-shadow:var(--shadow);font-size:13px}
+.pill{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:999px;padding:8px 9px 8px 16px;font-weight:600;
+ background:var(--bg);color:var(--fg);box-shadow:var(--shadow);font-size:13px}
 .pill b{background:var(--acc);color:var(--accfg);border-radius:999px;padding:1px 9px;font-size:12px;font-weight:650}
 
 /* Messages */
