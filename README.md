@@ -45,12 +45,6 @@ After you change any file, press the reload icon on the extension card and refre
 - Courses with different meeting date ranges do not clash with each other.
 - The max-units field (default 20) only warns. It does not change plans.
 
-## Troubleshooting
-
-- No panel: confirm the address starts with `https://clic.mmu.edu.my/`, reload the extension, refresh the tab. If CLiC renders pages inside a frame, the panel (top frame only) will not appear; report this.
-- Retrieve is greyed out: you are not on a page with the options table. Follow steps 6 and 7.
-- "Not saved": the table is still loading, or CLiC changed its layout. Selectors live in `parser.js`.
-
 ## Tests
 
 `npm install` then `npm test`. The test builds CLiC-shaped pages in jsdom, drives the panel by clicking its buttons, and compares the generated plan counts with an independent brute force.
