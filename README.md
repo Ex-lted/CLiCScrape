@@ -1,14 +1,4 @@
-<div align="center">
-  <video src="https://github.com/user-attachments/assets/8391d3e3-3983-4140-b928-f38c848d5751" 
-         autoplay 
-         loop 
-         muted 
-         playsinline 
-         width="100%" 
-         style="display: block; border-radius: 6px;">
-  </video>
-</div>
-
+https://github.com/user-attachments/assets/8391d3e3-3983-4140-b928-f38c848d5751
 
 # CLiCScrape (browser extension)
 
