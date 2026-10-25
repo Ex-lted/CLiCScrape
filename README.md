@@ -1,4 +1,4 @@
-<video src=https://github.com/user-attachments/assets/e27f6b24-c53c-4d95-a6ca-38d03a857f10 autoplay loop muted playsinline controls width="100%"></video>
+https://github.com/user-attachments/assets/e27f6b24-c53c-4d95-a6ca-38d03a857f10
 
 # CLiCScrape (browser extension)
 
