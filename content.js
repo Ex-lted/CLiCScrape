@@ -1,4 +1,3 @@
-// content.js: classic content script. Loads the ES modules shipped in the extension package.
 (async () => {
   if (window.top !== window) return; // CLiC pages live in the top frame
   if (document.getElementById('clic-planner-host')) return;

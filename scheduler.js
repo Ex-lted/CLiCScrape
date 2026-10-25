@@ -1,4 +1,3 @@
-// scheduler.js
 // courses: array of normalize() outputs from parser.js
 // filters: { freeDays: ['Fri'], earliest: 480, latest: 1080, openOnly: true }
 //          earliest/latest are minutes since midnight (8:00AM = 480, 6:00PM = 1080)
@@ -84,7 +83,7 @@ export function generate(courses, filters = {}, { count = 5, maxNodes = 200000 }
   dfs(0);
 
   const schedules = reservoir.map((combo) =>
-    courses.map((c) => combo.find((x) => x.course === c.course)) // back to the user's course order
+    courses.map((c) => combo.find((x) => x.course === c.course)) 
   );
   return { schedules, total, truncated, blockedBy: null };
 }

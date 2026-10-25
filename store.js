@@ -6,7 +6,7 @@ export const defaults = () => ({
   selected: [], // course codes the user wants in the timetable
   courses: {}, // code -> normalize() output + { category, units, term, retrievedAt }
   filters: { freeDays: [], earliest: null, latest: null, openOnly: true, count: 5, maxUnits: 20 },
-  ui: { tab: 'guide', collapsed: false, pos: null }, // pos = {x,y} px from top-left, null = default corner
+  ui: { tab: 'guide', collapsed: false, pos: null, theme: 'system' }, // pos = {x,y} px from top-left, null = default corner
 });
 
 // Adapter over chrome.storage.local (content scripts may use it with the "storage" permission).
@@ -69,6 +69,13 @@ export function saveCourse(s, data) {
 
 export function removeCourse(s, code) {
   delete s.courses[code]; // forget data only; selection stays, so it shows as "to retrieve"
+}
+
+// Wipe the course list, the selection and all retrieved data (the list refills when you reopen the requirement page).
+export function clearAllCourses(s) {
+  s.courses = {};
+  s.selected = [];
+  s.catalog = {};
 }
 
 // Returns an error string, or null on success.

@@ -1,17 +1,16 @@
-// panel.js: the floating UI (Shadow DOM) and the glue between page, store and scheduler.
 import { detectPage, parseCourseList, parseCourseName, parseCoursePage, findTermLabel } from './parser.js';
 import { generate } from './scheduler.js';
-import { createStore, addCatalog, setSelected, saveCourse, removeCourse, addManual } from './store.js';
+import { createStore, addCatalog, setSelected, saveCourse, removeCourse, clearAllCourses } from './store.js';
 import { STEPS, detectStep } from './guide.js';
 import { CSS } from './styles.js';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const PALETTE = ['#4f46e5', '#0891b2', '#16a34a', '#d97706', '#db2777', '#7c3aed', '#0d9488', '#dc2626'];
 const PX_PER_HOUR = 36;
-const TABS = [['guide', 'Guide'], ['courses', 'Courses'], ['filters', 'Filters'], ['plans', 'Plans']];
+const TABS = [['guide', 'Scraper'], ['courses', 'Courses'], ['filters', 'Filters'], ['plans', 'Plans']];
 const THEMES = ['system', 'light', 'dark'];
 const THEME_LABEL = { system: 'Auto', light: 'Light', dark: 'Dark' };
-// Static icon shapes (24x24, stroked). Built with createElementNS, never innerHTML.
+
 const ICONS = {
   light: [['circle', { cx: 12, cy: 12, r: 4 }], ['path', { d: 'M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4' }]],
   dark: [['path', { d: 'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z' }]],
@@ -137,8 +136,79 @@ export async function mountPanel({ doc = document, adapter }) {
     st.ui.theme = THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length];
   });
 
-  const setMsg = (kind, text, details = []) => {
-    view.message = { kind, text, details };
+  // ---------- custom dropdown  ----------
+  let menu = null; // { el, btn } while a list is open
+  const closeMenu = () => {
+    if (!menu) return;
+    menu.el.remove();
+    menu.btn.setAttribute('aria-expanded', 'false');
+    menu = null;
+  };
+  const onDocDown = (e) => {
+    if (!menu) return;
+    const path = e.composedPath();
+    if (!path.includes(menu.el) && !path.includes(menu.btn)) closeMenu();
+  };
+  const onAnyScroll = (e) => { if (menu && e.target !== menu.el) closeMenu(); };
+  doc.addEventListener('pointerdown', onDocDown, true);
+  root.addEventListener('scroll', onAnyScroll, true);
+  win.addEventListener('resize', closeMenu);
+
+  function dropdown({ name, label, options, value, disabled = false, onPick }) {
+    let opts = options;
+    let val = value;
+    const text = h('span', {});
+    const btn = h('button', {
+      type: 'button', class: 'dd', 'data-f': name, 'aria-label': label,
+      'aria-haspopup': 'listbox', 'aria-expanded': 'false', disabled,
+    }, text);
+    const show = () => { text.textContent = opts.find((o) => o.value === val)?.label ?? '--'; };
+    show();
+
+    const open = () => {
+      closeMenu();
+      const list = h('div', { class: 'menu', role: 'listbox', 'aria-label': label });
+      const items = opts.map((o) => h('button', {
+        type: 'button', class: `opt${o.value === val ? ' sel' : ''}`, role: 'option',
+        'aria-selected': String(o.value === val), tabindex: '-1',
+        onclick: () => { val = o.value; show(); closeMenu(); btn.focus(); onPick(val); },
+      }, o.label));
+      list.append(...items);
+      root.append(list);
+      const r = btn.getBoundingClientRect();
+      const width = Math.max(r.width, 72);
+      const mh = list.offsetHeight;
+      let top = r.bottom + 4;
+      if (top + mh > win.innerHeight - 8) top = Math.max(8, r.top - 4 - mh); // flip above when no room below
+      list.style.setProperty('width', `${width}px`);
+      list.style.setProperty('left', `${Math.max(8, Math.min(r.left, win.innerWidth - width - 8))}px`);
+      list.style.setProperty('top', `${top}px`);
+      const sel = items.find((i) => i.classList.contains('sel'));
+      if (sel) list.scrollTop = sel.offsetTop - list.clientHeight / 2 + sel.offsetHeight / 2;
+      (sel ?? items[0])?.focus({ preventScroll: true });
+      list.addEventListener('keydown', (e) => {
+        const i = items.indexOf(root.activeElement);
+        const go = (n) => { e.preventDefault(); items[Math.max(0, Math.min(items.length - 1, n))]?.focus(); };
+        if (e.key === 'ArrowDown') go(i + 1);
+        else if (e.key === 'ArrowUp') go(i - 1);
+        else if (e.key === 'Home') go(0);
+        else if (e.key === 'End') go(items.length - 1);
+        else if (e.key === 'Escape' || e.key === 'Tab') { if (e.key === 'Escape') e.preventDefault(); closeMenu(); btn.focus(); }
+      });
+      menu = { el: list, btn };
+      btn.setAttribute('aria-expanded', 'true');
+    };
+    btn.addEventListener('click', () => (menu?.btn === btn ? closeMenu() : open()));
+    return {
+      el: btn,
+      setOptions(o) { opts = o; show(); },
+      setValue(v) { val = v; show(); },
+      setDisabled(b) { btn.disabled = b; },
+    };
+  }
+
+  const setMsg = (kind, text, details = [], tab = 'guide') => {
+    view.message = { kind, text, details, tab };
   };
   const stamp = (iso) => new Date(iso).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
@@ -146,7 +216,7 @@ export async function mountPanel({ doc = document, adapter }) {
   function retrieve() {
     const r = parseCoursePage(doc);
     if (!r.ok) {
-      setMsg('err', 'Not saved. The page may still be loading; scroll the options table and try again.', r.problems.slice(0, 5));
+      setMsg('err', 'Not saved. Scroll to the bottom of the page and press "Display More".', r.problems.slice(0, 5));
       return render();
     }
     const data = { ...r.data, term: findTermLabel(doc) };
@@ -177,9 +247,9 @@ export async function mountPanel({ doc = document, adapter }) {
   async function copyText(text) {
     try {
       await win.navigator.clipboard.writeText(text);
-      setMsg('ok', 'Plan copied.');
+      setMsg('ok', 'Plan copied.', [], 'plans');
     } catch {
-      setMsg('err', 'Browser blocked copying. Select the text manually.');
+      setMsg('err', 'Browser blocked copying. Select the text manually.', [], 'plans');
     }
     render();
   }
@@ -190,7 +260,7 @@ export async function mountPanel({ doc = document, adapter }) {
     const used = new Set(blocks.map((b) => b.day));
     const days = DAYS.filter((d, i) => i < 5 || used.has(d));
     const t0 = Math.floor(Math.min(...blocks.map((b) => b.start)) / 60) * 60;
-    const t1 = Math.max(Math.ceil(Math.max(...blocks.map((b) => b.end)) / 60) * 60, 20 * 60); // always show until 8PM
+    const t1 = Math.ceil(Math.max(...blocks.map((b) => b.end)) / 60) * 60;
     const height = ((t1 - t0) / 60) * PX_PER_HOUR;
     const hours = [];
     for (let t = t0; t < t1; t += 60) hours.push(t);
@@ -279,18 +349,29 @@ export async function mountPanel({ doc = document, adapter }) {
     const done = s.selected.filter((c) => s.courses[c]);
     const units = done.reduce((a, c) => a + (s.courses[c].units ?? 0), 0);
     const terms = [...new Set(done.map((c) => s.courses[c].term).filter(Boolean))];
-    const input = h('input', { type: 'text', placeholder: 'Add a course code, e.g. CP6114', 'data-f': 'manual' });
-    const add = () => {
-      let err = null;
-      store.update((st) => { err = addManual(st, input.value); });
-      if (err) { setMsg('err', err); render(); }
+    const pickAll = (on) => store.update((st) => { for (const c of codes) setSelected(st, c, on); });
+    const deleteAll = () => {
+      view.confirmDelete = false;
+      view.result = null;
+      view.snapshot = null;
+      listSig = ''; // let the requirement list repopulate the catalog next time it is seen
+      store.update((st) => clearAllCourses(st));
     };
-    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') add(); });
+    const bulk = view.confirmDelete
+      ? h('div', { class: 'bulk' },
+        h('button', { class: 'ghost danger confirm', onclick: deleteAll }, 'Confirm delete'),
+        h('span', { class: 'sp' }),
+        h('button', { class: 'ghost', onclick: () => { view.confirmDelete = false; render(); } }, 'Cancel'))
+      : h('div', { class: 'bulk' },
+        h('button', { class: 'ghost', onclick: () => pickAll(true) }, 'Select all'),
+        h('button', { class: 'ghost', onclick: () => pickAll(false) }, 'Unselect all'),
+        h('span', { class: 'sp' }),
+        h('button', { class: 'ghost danger', title: 'Remove every course and its retrieved data', onclick: () => { view.confirmDelete = true; render(); } }, 'Delete all'));
     return h('div', {},
-      codes.length ? null : h('p', { class: 'hint' }, 'No courses yet. Open the requirement list in CLiC (Guide step 4) or add a code below.'),
+      codes.length ? bulk : null,
+      codes.length ? null : h('p', { class: 'hint' }, 'No courses yet. Open the requirement list in CLiC (Scraper step 4).'),
       terms.length > 1 ? h('div', { class: 'msg err' }, `Mixed trimesters: ${terms.join(', ')}`) : null,
       codes.map((c) => courseRow(s, c)),
-      h('div', { class: 'add' }, input, h('button', { class: 'ghost', onclick: add }, 'Add')),
       h('div', { class: 'units' }, `Units (selected, retrieved): ${units}`));
   }
 
@@ -298,21 +379,31 @@ export async function mountPanel({ doc = document, adapter }) {
     const f = s.filters;
     const theme = THEMES.includes(s.ui.theme) ? s.ui.theme : 'system';
     const set = (fn) => store.update((st) => fn(st.filters), { silent: true });
-    const field = (label, el) => h('label', { class: 'field' }, h('span', {}, label), el);
-    // Two dropdowns: HH : MM. Hour "--" means no limit (minutes are then disabled).
+    const field = (label, el, tag = 'label') => h(tag, { class: 'field' }, h('span', {}, label), el);
+    // Two custom dropdowns: HH : MM, limited to 08:00-20:00. Hour "--" means no limit.
     const pad = (n) => String(n).padStart(2, '0');
-    const HOURS = Array.from({ length: 24 }, (_, i) => pad(i));
-    const MINUTES = Array.from({ length: 12 }, (_, i) => pad(i * 5));
+    const HOUR_OPTS = [{ value: '', label: '--' }, ...Array.from({ length: 13 }, (_, i) => ({ value: String(8 + i), label: pad(8 + i) }))];
+    const minuteOpts = (hr) => (hr === '20' ? [0] : Array.from({ length: 12 }, (_, i) => i * 5)).map((m) => ({ value: String(m), label: pad(m) }));
     const timeSelect = (name, value, onPick) => {
-      const hh = value == null ? null : Math.floor(value / 60);
-      const mm = value == null ? 0 : value % 60;
-      const emit = () => onPick(hSel.value === '' ? null : Number(hSel.value) * 60 + Number(mSel.value));
-      const hSel = h('select', { 'data-f': `${name}-h`, 'aria-label': 'Hour', onchange: () => { mSel.disabled = hSel.value === ''; emit(); } },
-        h('option', { value: '', selected: hh == null }, '--'),
-        HOURS.map((t) => h('option', { value: String(Number(t)), selected: hh === Number(t) }, t)));
-      const mSel = h('select', { 'data-f': `${name}-m`, 'aria-label': 'Minute', disabled: hh == null, onchange: emit },
-        MINUTES.map((t) => h('option', { value: String(Number(t)), selected: mm === Number(t) }, t)));
-      return h('div', { class: 'time', 'data-f': name }, hSel, h('span', { class: 'colon' }, ':'), mSel);
+      let hv = value == null ? '' : String(Math.min(20, Math.max(8, Math.floor(value / 60))));
+      let mv = value == null || hv === '20' ? '0' : String(value % 60);
+      const emit = () => onPick(hv === '' ? null : Number(hv) * 60 + Number(mv));
+      const hDD = dropdown({
+        name: `${name}-h`, label: 'Hour', options: HOUR_OPTS, value: hv,
+        onPick: (v) => {
+          hv = v;
+          if (v === '') { mDD.setDisabled(true); mDD.setValue(''); } else {
+            if (v === '20') mv = '0';
+            mDD.setOptions(minuteOpts(v)); mDD.setDisabled(false); mDD.setValue(mv);
+          }
+          emit();
+        },
+      });
+      const mDD = dropdown({
+        name: `${name}-m`, label: 'Minute', options: minuteOpts(hv), value: hv === '' ? '' : mv, disabled: hv === '',
+        onPick: (v) => { mv = v; emit(); },
+      });
+      return h('div', { class: 'time', 'data-f': name }, hDD.el, h('span', { class: 'colon' }, ':'), mDD.el);
     };
     return h('div', {},
       h('span', { class: 'lbl' }, 'Free days (no classes at all)'),
@@ -321,8 +412,8 @@ export async function mountPanel({ doc = document, adapter }) {
           type: 'checkbox', 'data-day': d, checked: f.freeDays.includes(d),
           onchange: (e) => set((ff) => { ff.freeDays = e.target.checked ? [...new Set([...ff.freeDays, d])] : ff.freeDays.filter((x) => x !== d); }),
         }), d))),
-      field('Earliest class start', timeSelect('earliest', f.earliest, (v) => set((ff) => { ff.earliest = v; }))),
-      field('Latest class end', timeSelect('latest', f.latest, (v) => set((ff) => { ff.latest = v; }))),
+      field('Earliest class start', timeSelect('earliest', f.earliest, (v) => set((ff) => { ff.earliest = v; })), 'div'),
+      field('Latest class end', timeSelect('latest', f.latest, (v) => set((ff) => { ff.latest = v; })), 'div'),
       h('label', { class: 'chk' },
         h('input', { type: 'checkbox', class: 'sw', 'data-f': 'openOnly', checked: f.openOnly, onchange: (e) => set((ff) => { ff.openOnly = e.target.checked; }) }),
         'Only options with open seats'),
@@ -341,12 +432,13 @@ export async function mountPanel({ doc = document, adapter }) {
       h('button', { class: 'primary gen', disabled: !ready, onclick: runGenerate }, view.result ? 'Regenerate' : 'Generate plans'),
       !s.selected.length ? h('p', { class: 'hint' }, 'Select courses in the Courses tab first.') : null,
       missing.length ? h('p', { class: 'hint' }, `Retrieve these first: ${missing.join(', ')}`) : null,
+      view.message?.tab === 'plans' ? h('div', { class: `msg ${view.message.kind}`, style: { 'margin-top': '10px' } }, view.message.text) : null,
       view.result ? resultView() : null);
   }
 
   function footer() {
     const on = view.page === 'course-options';
-    const m = view.message;
+    const m = view.message?.tab === 'guide' ? view.message : null;
     return h('div', { class: 'foot' },
       m ? h('div', { class: `msg ${m.kind}` }, m.text, m.details.length ? h('ul', {}, m.details.map((d) => h('li', {}, d))) : null) : null,
       h('button', { class: 'primary retrieve', disabled: !on, onclick: retrieve }, 'Retrieve this course'),
@@ -358,8 +450,8 @@ export async function mountPanel({ doc = document, adapter }) {
     const theme = THEMES.includes(s.ui.theme) ? s.ui.theme : 'system';
     const body = { guide: guideTab, courses: coursesTab, filters: filtersTab, plans: plansTab }[s.ui.tab](s);
     const head = h('header', { class: 'drag' },
-      h('div', {}, h('div', { class: 't' }, 'CLiC Planner'),
-        h('div', { class: 's' }, cur ? `Now: ${cur.title}` : 'Page not recognised')),
+      h('div', {}, h('div', { class: 't' }, 'CLiCScrape'),
+        h('div', { class: 's' }, cur ? `Now: ${cur.title}` : '')),
       h('span', { class: 'sp' }),
       h('button', {
         class: 'iconbtn theme', 'data-nodrag': true, 'aria-label': `Theme: ${THEME_LABEL[theme]}`,
@@ -370,9 +462,9 @@ export async function mountPanel({ doc = document, adapter }) {
     return h('div', { class: 'panel' },
       head,
       h('nav', { class: 'tabs' }, TABS.map(([id, label]) => h('button', {
-        class: s.ui.tab === id ? 'on' : '', 'data-tab': id, onclick: () => store.update((st) => { st.ui.tab = id; }),
+        class: s.ui.tab === id ? 'on' : '', 'data-tab': id, onclick: () => { view.confirmDelete = false; store.update((st) => { st.ui.tab = id; }); },
       }, label))),
-      h('div', { class: 'body' }, body), footer());
+      h('div', { class: 'body' }, body), s.ui.tab === 'guide' ? footer() : null);
   }
 
   function pillView(s) {
@@ -389,6 +481,7 @@ export async function mountPanel({ doc = document, adapter }) {
   function render() {
     const s = store.state;
     applyTheme(s.ui.theme);
+    closeMenu();
     app.replaceChildren(s.ui.collapsed ? pillView(s) : panelView(s));
     if (pos) setPos(pos.x, pos.y); // re-clamp: panel and pill differ in size
   }
@@ -408,7 +501,7 @@ export async function mountPanel({ doc = document, adapter }) {
   }
 
   function refresh() {
-    if (!host.isConnected) doc.body.append(host); // page replaced its body
+    if (!host.isConnected) doc.body.append(host);
     const page = detectPage(doc);
     const step = detectStep(doc);
     if (page === 'course-list') {
@@ -450,6 +543,9 @@ export async function mountPanel({ doc = document, adapter }) {
       mo.disconnect();
       win.clearTimeout(timer);
       win.removeEventListener('resize', onResize);
+      win.removeEventListener('resize', closeMenu);
+      doc.removeEventListener('pointerdown', onDocDown, true);
+      closeMenu();
       host.remove();
     },
   };

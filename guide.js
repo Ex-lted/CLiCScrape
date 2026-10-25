@@ -5,7 +5,7 @@ export const STEPS = [
   { id: 'home', title: 'Open Enrollment', text: 'On the Student Homepage, click the Enrollment tile.' },
   { id: 'appointments', title: 'Open Enroll by My Requirements', text: 'In the left menu, click "Enroll by My Requirements".' },
   { id: 'requirements', title: 'Pick the trimester row', text: 'Click the row named after the trimester you are enrolling in (for example BETA TRIMESTER OCTOBER _2620).' },
-  { id: 'list', title: 'Tick your courses, then open one', text: 'This list is captured automatically. Open the Courses tab, tick the courses you want. They get an amber outline here. Click an amber one.' },
+  { id: 'list', title: 'Open a course', text: 'Pick a course you wanna scrape.' },
   { id: 'course-detail', title: 'Click View Classes', text: 'On Course Detail, click the "View Classes" button.' },
   { id: 'select-term', title: 'Choose the current trimester', text: 'On Select a Value, expand "Terms on or after..." if needed and click the current trimester.' },
   { id: 'course-options', title: 'Press Retrieve', text: 'Wait until the options table is fully loaded, then press "Retrieve this course" below. Then go back to the list and open the next amber course.' },
